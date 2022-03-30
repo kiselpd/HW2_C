@@ -1,55 +1,33 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "utils.h"
 #include "search.h"
 #include "show.h"
 
-
-
 int main()
 {
     int result = EXIT;
     file_t files[500];
-    int len_dir = 0;
-    size_t count_dir = 0;
-    char* str_dir = NULL;
-    int len_find_str = 0;
-    size_t count_find_str = 0;
+    dir_t curr_dir;
     char* find_str = NULL;
 
-    printf("Enter the name of directory: ");
-    len_dir = getline(&str_dir, &count_dir, stdin);
-    if (len_dir == INPUT_ERROR)
+    result = get_dir_t(&curr_dir);
+    if (result == INPUT_ERROR)
     {
-        result = INPUT_ERROR;
-    }
-    if (str_dir[strlen(str_dir) - 1] == '\n')
-    {
-        str_dir[strlen(str_dir) - 1] = '\0';
-    }
-
-    printf("Enter the string: ");
-    len_find_str = getline(&find_str, &count_find_str, stdin);
-    if (len_find_str == INPUT_ERROR)
-    {
-        result = INPUT_ERROR;
-    }
-    if (find_str[strlen(find_str) - 1] == '\n')
-    {
-        find_str[strlen(find_str) - 1] = '\0';
+        show_error(result);
+        return 0;
     }
         
-    if (result != INPUT_ERROR)
+    find_str = get_find_str(find_str);
+    if (find_str == NULL)
     {
-        result = sequential_search_top(str_dir, find_str, files);
+        result = INPUT_ERROR;
+        show_error(result);
+        return 0;
     }
 
-    free(str_dir);
-    str_dir = NULL;
-    free(find_str);
-    find_str = NULL;
+    result = sequential_search_top(curr_dir, find_str, files);
 
     if ((result == INPUT_ERROR) || (result == DIR_NOT_FOUND) || (result == STR_NOT_FOUND))
     {
@@ -59,5 +37,10 @@ int main()
     {
         show_top(files, result);
     }
+
+    free(find_str);
+    find_str = NULL;
+    free(curr_dir.dir_name);
+    closedir(curr_dir.dir);
 	return 0;
 }

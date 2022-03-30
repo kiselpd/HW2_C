@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "search.h"
+#include "utils.h"
+
 
 int compare(const void* first, const void* second)
 {
@@ -13,14 +15,13 @@ int compare(const void* first, const void* second)
 
 int found_string(char* string, char* find_string)
 {
-    int count_found_string = 0;
-    char* ptr_string = string;
-
     if (!(string && find_string))
     {
-        ptr_string = NULL;
         return INPUT_ERROR;
     }
+
+    int count_found_string = 0;
+    char* ptr_string = string;
 
     while (ptr_string && ptr_string < (ptr_string + strlen(ptr_string)))
     {
@@ -36,29 +37,29 @@ int found_string(char* string, char* find_string)
     return count_found_string;
 }
 
-int start_search(char* directory, DIR* dir, char* find_string, file_t files[])
+int start_search(dir_t curr_dir, char* find_string, file_t files[])
 {
-    struct dirent* ent;
-    size_t count_found = 0;
-    int len_directory = strlen(directory);
-    int count_files = 0;
-
-    if (!(directory && find_string && files))
+    if (!(curr_dir.dir_name && find_string && files))
     {
         return INPUT_ERROR;
     }
-    if (!dir)
+    if (!curr_dir.dir)
     {
         return DIR_NOT_FOUND;
     }
 
-    while ((ent = readdir(dir)) != EXIT)
+    struct dirent* ent;
+    size_t count_found = 0;
+    int count_files = 0;
+    int len_curr_dir = strlen(curr_dir.dir_name);
+
+    while ((ent = readdir(curr_dir.dir)) != EXIT)
     {
         if ((strcmp(ent->d_name, ".")) && (strcmp(ent->d_name, "..")))
         {
-            strcat(directory, "/");
-            strcat(directory, ent->d_name);
-            FILE* file = fopen(directory, "r");
+            strcat(curr_dir.dir_name, "/");
+            strcat(curr_dir.dir_name, ent->d_name);
+            FILE* file = fopen(curr_dir.dir_name, "r");
             if (!file)
             {
                 continue;
@@ -82,6 +83,8 @@ int start_search(char* directory, DIR* dir, char* find_string, file_t files[])
                     }
                     count_found += found_string(str, find_string);
                 }
+                count = 0;
+                free(str);
             } while (len != INPUT_ERROR);
             if (count_found != 0)
             {
@@ -90,44 +93,36 @@ int start_search(char* directory, DIR* dir, char* find_string, file_t files[])
                 count_files++;
             }
             count_found = 0;
-            directory[len_directory] = '\0';
+            curr_dir.dir_name[len_curr_dir] = '\0';
 
-            free(str);
             fclose(file);
         }
     }
     return count_files;
 }
 
-int sequential_search_top(char* str_dir, char* find_str, file_t files[])
+int sequential_search_top(dir_t curr_dir, char* find_str, file_t files[])
 {
-    int result = EXIT;
-    DIR* dir = opendir(str_dir);
-
-    if (!(str_dir && find_str && files))
+    if (!(curr_dir.dir_name && find_str && files))
     {
-        closedir(dir);
         return INPUT_ERROR;
     }
 
-    if (!dir)
+    if (!curr_dir.dir)
     {
-        closedir(dir);
         return DIR_NOT_FOUND;
     }
 
-    result = start_search(str_dir, dir, find_str, files);
+    int result = EXIT;
 
+    result = start_search(curr_dir, find_str, files);
 
     if (result == 0)
     {
-        closedir(dir);
         return STR_NOT_FOUND;
     }
 
     qsort(files, result, sizeof(file_t), compare);
-
-    closedir(dir);
 
     return result;
 }
