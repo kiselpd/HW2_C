@@ -23,6 +23,12 @@ int found_string(char* string, char* find_string)
     int count_found_string = 0;
     char* ptr_string = string;
 
+    if (!(string && find_string))
+    {
+        ptr_string = NULL;
+        return INPUT_ERROR;
+    }
+
     while (ptr_string && ptr_string < (ptr_string + strlen(ptr_string)))
     {
         ptr_string = strstr(ptr_string, find_string);
@@ -44,6 +50,15 @@ int start_search(char* directory, DIR* dir, char* find_string, file_t files[])
     int len_directory = strlen(directory);
     int count_files = 0;
 
+    if (!(directory && find_string && files))
+    {
+        return INPUT_ERROR;
+    }
+    if (!dir)
+    {
+        return DIR_NOT_FOUND;
+    }
+   
     while ((ent = readdir(dir)) != EXIT)
     {
         if ((strcmp(ent->d_name, ".")) && (strcmp(ent->d_name, "..")))
@@ -100,95 +115,39 @@ int compare(const void* first, const void* second)
     return second_file->count_search - first_file->count_search;
 }
 
-int start()
+int sequential_search_top(char* str_dir, char* find_str, file_t files[])
 {
-    file_t files[500];
-    DIR* dir;
-    int result = 0;
-    int len_dir = 0;
-    size_t count_dir = 0;
-    char* str_dir = NULL;
-    int len_find_str = 0;
-    size_t count_find_str = 0;
-    char* find_str = NULL;
-
-    printf("Enter the name of directory: ");
-    len_dir = getline(&str_dir, &count_dir, stdin);
-    if (len_dir == INPUT_ERROR)
-    {
-        free(str_dir);
-        str_dir = NULL;
-        return INPUT_ERROR;
-    }
-    if (str_dir[strlen(str_dir) - 1] == '\n')
-    {
-        str_dir[strlen(str_dir) - 1] = '\0';
-    }
-
-    dir = opendir(str_dir);
-    if (!dir)
-    {
-        free(str_dir);
-        str_dir = NULL;
-        return DIR_NOT_FOUND;
-    }
-
-    printf("Enter the string: ");
-    len_find_str = getline(&find_str, &count_find_str, stdin);
-    if (len_find_str == INPUT_ERROR)
+    int result = EXIT;
+    DIR* dir = opendir(str_dir);
+   
+    if (!(str_dir && find_str && files))
     {
         closedir(dir);
-        free(str_dir);
-        str_dir = NULL;
-        free(find_str);
-        find_str = NULL;
         return INPUT_ERROR;
     }
-    if (find_str[strlen(find_str) - 1] == '\n')
+
+    if (!dir)
     {
-        find_str[strlen(find_str) - 1] = '\0';
+        closedir(dir);
+        return DIR_NOT_FOUND;
     }
 
     result = start_search(str_dir, dir, find_str, files);
 
-    qsort(files, result, sizeof(file_t), compare);
-
     if (result == 0)
     {
+        closedir(dir);
         return STR_NOT_FOUND;
     }
-    else
-    {
-        if (result < TOP5)
-        {
-            printf("\n");
-            for (size_t i = 0; i < result; i++)
-            {
-                printf("%ld.%s -> %ld\n", i + 1, files[i].file_name, files[i].count_search);
-            }
-        }
-        else
-        {
-            printf("\n");
-            for (size_t i = 0; i < TOP5; i++)
-            {
-                printf("%ld.%s -> %ld\n", i + 1, files[i].file_name, files[i].count_search);
-            }
-        }
-    }
+
+    qsort(files, result, sizeof(file_t), compare);
 
     closedir(dir);
-
-    free(str_dir);
-    str_dir = NULL;
-
-    free(find_str);
-    find_str = NULL;
 
     return EXIT;
 }
 
-void check_error(int error)
+void show_error(int error)
 {
     switch (error)
     {
@@ -202,7 +161,6 @@ void check_error(int error)
         printf("\nInput error!\n");
         break;
     case EXIT:
-        printf("\n");
         break;
     default:
         printf("\nUnknown error!\n");
@@ -210,10 +168,77 @@ void check_error(int error)
     }
 }
 
+void show_top(file_t files, int count)
+{
+    if (count < TOP5)
+    {
+        printf("\n");
+        for (size_t i = 0; i < count; i++)
+        {
+            printf("%ld.%s -> %ld\n", i + 1, files[i].file_name, files[i].count_search);
+        }
+    }
+    else
+    {
+        printf("\n");
+        for (size_t i = 0; i < TOP5; i++)
+        {
+            printf("%ld.%s -> %ld\n", i + 1, files[i].file_name, files[i].count_search);
+        }
+    }
+}
+
 
 int main()
 {
-    int result = start();
-    check_error(result);
+    int result = EXIT;
+    file_t files[500];
+    int len_dir = 0;
+    size_t count_dir = 0;
+    char* str_dir = NULL;
+    int len_find_str = 0;
+    size_t count_find_str = 0;
+    char* find_str = NULL;
+
+    printf("Enter the name of directory: ");
+    len_dir = getline(&str_dir, &count_dir, stdin);
+    if (len_dir == INPUT_ERROR)
+    {
+        result = INPUT_ERROR;
+    }
+    if (str_dir[strlen(str_dir) - 1] == '\n')
+    {
+        str_dir[strlen(str_dir) - 1] = '\0';
+    }
+
+    printf("Enter the string: ");
+    len_find_str = getline(&find_str, &count_find_str, stdin);
+    if (len_find_str == INPUT_ERROR)
+    {
+        result = INPUT_ERROR;
+    }
+    if (find_str[strlen(find_str) - 1] == '\n')
+    {
+        find_str[strlen(find_str) - 1] = '\0';
+    }
+        
+    if (result != INPUT_ERROR)
+    {
+        result = sequential_search_top(str_dir, find_str, files);
+    }
+
+    free(str_dir);
+    str_dir = NULL;
+    free(find_str);
+    find_str = NULL;
+
+    if ((result == INPUT_ERROR) || (result == DIR_NOT_FOUND) || (result == STR_NOT_FOUND))
+    {
+        show_error(result);
+    }
+    else
+    {
+        show_top(files, result);
+    }
 	return 0;
 }
