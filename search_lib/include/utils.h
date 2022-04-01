@@ -19,6 +19,12 @@ typedef enum value_t
     TOP5 = 5
 }value_t;
 
+typedef enum mode_t
+{
+    SEQUENTIAL = 0,
+    PARALLEL = 1
+}value_t;
+
 typedef struct directory_t
 {
     char* dir_name;

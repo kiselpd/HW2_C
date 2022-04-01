@@ -43,7 +43,7 @@ int found_string(char* string, char* find_string)
 
 int parallel_search(dir_t curr_dir, char* find_string, file_t files[])
 {
-    if (!(curr_dir.dir_name && find_string && files)) 
+    if (!(curr_dir.dir_name && find_string && files))
     {
         return INPUT_ERROR;
     }
@@ -61,7 +61,7 @@ int parallel_search(dir_t curr_dir, char* find_string, file_t files[])
     {
         if ((strcmp(ent->d_name, ".")) && (strcmp(ent->d_name, "..")))
         {
-            files[count_files].file_name = ent->d_name;     
+            files[count_files].file_name = ent->d_name;
             count_files++;
         }
     }
@@ -94,7 +94,7 @@ int parallel_search(dir_t curr_dir, char* find_string, file_t files[])
 
         if (pid[i] == 0)
         {
-            for (size_t j = i; j < count_files; j += (cpu_count-1))
+            for (size_t j = i; j < count_files; j += (cpu_count - 1))
             {
                 //printf("%ld - %ld\n", i, j);
                 strcat(curr_dir.dir_name, "/");
@@ -139,7 +139,7 @@ int parallel_search(dir_t curr_dir, char* find_string, file_t files[])
                 find_string = NULL;
                 free(curr_dir.dir_name);
                 free(pid);
-                munmap(curr_count_search, count_files * sizeof(size_t));
+                //munmap(curr_count_search, count_files * sizeof(size_t));
                 exit(0);
             }
         }
@@ -244,15 +244,14 @@ int search_top(dir_t curr_dir, char* find_str, file_t files[], int mode)
     }
 
     int result = EXIT;
-    if (mode == 1)
-    {
-        result = parallel_search(curr_dir, find_str, files);
-    }
-    else if (mode == 0)
+    if (mode == 0)
     {
         result = sequential_search(curr_dir, find_str, files);
     }
-
+    else
+    {
+        result = parallel_search(curr_dir, find_str, files);
+    }
     if (result == 0)
     {
         return STR_NOT_FOUND;
