@@ -96,7 +96,7 @@ int parallel_search(dir_t curr_dir, char* find_string, file_t files[])
         {
             for (size_t j = i; j < count_files; j += (cpu_count-1))
             {
-
+                //printf("%ld - %ld\n", i, j);
                 strcat(curr_dir.dir_name, "/");
                 strcat(curr_dir.dir_name, files[j].file_name);
                 FILE* file = fopen(curr_dir.dir_name, "r");
@@ -139,20 +139,15 @@ int parallel_search(dir_t curr_dir, char* find_string, file_t files[])
                 find_string = NULL;
                 free(curr_dir.dir_name);
                 free(pid);
+                munmap(curr_count_search, count_files * sizeof(size_t));
                 exit(0);
             }
         }
     }
 
-    int status;
-    pid_t waited_pid = 1;
-
     for (size_t i = 0; i < cpu_count; i++)
     {
-        while (waited_pid == 0)
-        {
-            waited_pid = waitpid(pid[i], &status, WNOHANG);
-        }
+        waitpid(pid[i], NULL, 0);
     }
 
     for (size_t i = 0; i < count_files; i++)
@@ -257,11 +252,6 @@ int search_top(dir_t curr_dir, char* find_str, file_t files[], int mode)
     {
         result = sequential_search(curr_dir, find_str, files);
     }
-
-    /*for (int i = 0; i < result; i++)
-    {
-        printf("%s - %ld\n", files[i].file_name, files[i].count_search);
-    }*/
 
     if (result == 0)
     {
