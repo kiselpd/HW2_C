@@ -14,6 +14,15 @@ void show_error(int error)
     case INPUT_ERROR:
         printf("\nInput error!\n");
         break;
+    case MALLOC_ERROR:
+        printf("\nMalloc error!\n");
+        break;
+    case MAP_ERROR:
+        printf("\nMap error!\n");
+        break;
+    case PID_ERROR:
+        printf("\nMultiple process execution error!\n");
+        break;
     case EXIT:
         break;
     default:

@@ -5,6 +5,9 @@
 
 typedef enum error_t
 {
+    PID_ERROR = -6,
+    MALLOC_ERROR = -5,
+    MAP_ERROR = -4,
     STR_NOT_FOUND = -3,
     DIR_NOT_FOUND = -2,
     INPUT_ERROR = -1

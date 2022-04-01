@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/wait.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include "search.h"
 #include "utils.h"
 
@@ -37,7 +41,138 @@ int found_string(char* string, char* find_string)
     return count_found_string;
 }
 
-int start_search(dir_t curr_dir, char* find_string, file_t files[])
+int parallel_search(dir_t curr_dir, char* find_string, file_t files[])
+{
+    if (!(curr_dir.dir_name && find_string && files)) 
+    {
+        return INPUT_ERROR;
+    }
+    if (!curr_dir.dir)
+    {
+        return DIR_NOT_FOUND;
+    }
+
+    struct dirent* ent;
+    size_t count_found = 0;
+    int count_files = 0;
+    int len_curr_dir = strlen(curr_dir.dir_name);
+
+    while ((ent = readdir(curr_dir.dir)) != EXIT)
+    {
+        if ((strcmp(ent->d_name, ".")) && (strcmp(ent->d_name, "..")))
+        {
+            files[count_files].file_name = ent->d_name;     
+            count_files++;
+        }
+    }
+
+    size_t* curr_count_search = mmap(NULL, sizeof(size_t) * count_files, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    if (curr_count_search == MAP_FAILED)
+    {
+        free(ent);
+        return MAP_ERROR;
+    }
+
+    size_t cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
+    pid_t* pid = (pid_t*)malloc(sizeof(pid_t) * cpu_count);
+    if (pid == NULL)
+    {
+        free(ent);
+        return MALLOC_ERROR;
+    }
+
+
+    for (size_t i = 0; i < cpu_count - 1; i++)
+    {
+
+        pid[i] = fork();
+        if (pid[i] < 0)
+        {
+            free(pid);
+            return PID_ERROR;
+        }
+
+        if (pid[i] == 0)
+        {
+            for (size_t j = i; j < count_files; j += (cpu_count-1))
+            {
+
+                strcat(curr_dir.dir_name, "/");
+                strcat(curr_dir.dir_name, files[j].file_name);
+                FILE* file = fopen(curr_dir.dir_name, "r");
+                if (!file)
+                {
+                    continue;
+                }
+
+                int len = 0;
+                size_t count = 0;
+                char* str = NULL;
+                do
+                {
+                    len = getline(&str, &count, file);
+                    if (len != INPUT_ERROR)
+                    {
+                        if (str[strlen(str) - 1] == '\n')
+                        {
+                            str[strlen(str) - 1] = '\0';
+                        }
+                        else
+                        {
+                            str[strlen(str)] = '\0';
+                        }
+                        count_found += found_string(str, find_string);
+                    }
+                    count = 0;
+                    free(str);
+                } while (len != INPUT_ERROR);
+                curr_count_search[j] = count_found;
+                count_found = 0;
+                curr_dir.dir_name[len_curr_dir] = '\0';
+
+                fclose(file);
+            }
+            if (pid[i] == 0)
+            {
+                closedir(curr_dir.dir);
+                free(find_string);
+                find_string = NULL;
+                free(curr_dir.dir_name);
+                free(pid);
+                exit(0);
+            }
+        }
+    }
+
+    int status;
+    pid_t waited_pid = 1;
+
+    for (size_t i = 0; i < cpu_count; i++)
+    {
+        while (waited_pid == 0)
+        {
+            waited_pid = waitpid(pid[i], &status, WNOHANG);
+        }
+    }
+
+    for (size_t i = 0; i < count_files; i++)
+    {
+        files[i].count_search = curr_count_search[i];
+    }
+
+    int check_munmap = munmap(curr_count_search, count_files * sizeof(size_t));
+    if (check_munmap != EXIT)
+    {
+        free(pid);
+        return MAP_ERROR;
+    }
+
+    free(pid);
+
+    return count_files;
+}
+
+int sequential_search(dir_t curr_dir, char* find_string, file_t files[])
 {
     if (!(curr_dir.dir_name && find_string && files))
     {
@@ -101,7 +236,7 @@ int start_search(dir_t curr_dir, char* find_string, file_t files[])
     return count_files;
 }
 
-int sequential_search_top(dir_t curr_dir, char* find_str, file_t files[])
+int search_top(dir_t curr_dir, char* find_str, file_t files[], int mode)
 {
     if (!(curr_dir.dir_name && find_str && files))
     {
@@ -114,8 +249,19 @@ int sequential_search_top(dir_t curr_dir, char* find_str, file_t files[])
     }
 
     int result = EXIT;
+    if (mode == 1)
+    {
+        result = parallel_search(curr_dir, find_str, files);
+    }
+    else if (mode == 0)
+    {
+        result = sequential_search(curr_dir, find_str, files);
+    }
 
-    result = start_search(curr_dir, find_str, files);
+    /*for (int i = 0; i < result; i++)
+    {
+        printf("%s - %ld\n", files[i].file_name, files[i].count_search);
+    }*/
 
     if (result == 0)
     {

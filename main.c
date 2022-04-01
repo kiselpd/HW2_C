@@ -8,12 +8,12 @@
 int main()
 {
     int result = EXIT;
-    file_t files[500];
+    int mode = 0;
+    file_t files[500]; 
     dir_t curr_dir;
     char* find_str = NULL;
-
     result = get_dir_t(&curr_dir);
-    if (result == INPUT_ERROR)
+    if (result != EXIT)
     {
         show_error(result);
         return 0;
@@ -24,12 +24,19 @@ int main()
     {
         result = INPUT_ERROR;
         show_error(result);
+        closedir(curr_dir.dir);
+        free(curr_dir.dir_name);
         return 0;
     }
 
-    result = sequential_search_top(curr_dir, find_str, files);
+    printf("Input mode 0/1:");         //0-
+    scanf("%d", &mode);
 
-    if ((result == INPUT_ERROR) || (result == DIR_NOT_FOUND) || (result == STR_NOT_FOUND))
+
+    result = search_top(curr_dir, find_str, files, mode);
+    
+
+    if ((result == INPUT_ERROR) || (result == DIR_NOT_FOUND) || (result == STR_NOT_FOUND) || (result == MAP_ERROR) || (result == MALLOC_ERROR))
     {
         show_error(result);
     }
@@ -40,7 +47,7 @@ int main()
 
     free(find_str);
     find_str = NULL;
-    free(curr_dir.dir_name);
     closedir(curr_dir.dir);
+    free(curr_dir.dir_name);
 	return 0;
 }

@@ -23,6 +23,12 @@ int get_dir_t(dir_t* ptr_dir)
 
     ptr_dir->dir_name = str_dir;
     ptr_dir->dir = opendir(str_dir);
+    if (ptr_dir->dir == NULL)
+    {
+        free(str_dir);
+        str_dir = NULL;
+        return DIR_NOT_FOUND;
+    }
 
     return EXIT;
 }
@@ -35,6 +41,8 @@ char* get_find_str(char* find_str)
     len_find_str = getline(&find_str, &count_find_str, stdin);
     if (len_find_str == INPUT_ERROR)
     {
+        free(find_str);
+        find_str = NULL;
         return NULL;
     }
     if (find_str[strlen(find_str) - 1] == '\n')
